@@ -1,0 +1,9 @@
+export const USER_CONNECTED = 'user.connected';
+export const USER_WAITING = 'user.waiting';
+export const MATCH_FOUND = 'match.found';
+export const USER_DISCONNECTED = 'user.disconnected';
+export const MESSAGE_SENT = 'message.sent';
+export const TYPING_START = 'typing.start';
+export const TYPING_STOP = 'typing.stop';
+export const SKIP_CHAT = 'skip.chat';
+export const STOP_SEARCH = 'stop.search';
