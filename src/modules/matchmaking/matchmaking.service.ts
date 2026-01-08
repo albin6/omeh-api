@@ -19,7 +19,7 @@ class MatchmakingService {
   private handleUserConnected(data: { socket: any }): void {
     const { socket } = data;
 
-    // Emit waiting event to the user with their position in queue (before adding)
+    // Emit waiting event to the user with their position in queue
     socket.emit('waiting', { position: this.waitingQueue.length + 1 });
 
     // Add user to waiting queue
@@ -34,31 +34,48 @@ class MatchmakingService {
 
   private handleUserDisconnected(data: { socket: any, reason?: string }): void {
     const { socket } = data;
-
-    // Remove user from waiting queue if they were waiting
-    const index = this.waitingQueue.findIndex(user => user.socket.id === socket.id);
-    if (index !== -1) {
-      this.waitingQueue.splice(index, 1);
-    }
+    this.removeUserFromQueue(socket.id);
   }
 
   private handleStopSearch(data: { socket: any }): void {
     const { socket } = data;
+    this.removeUserFromQueue(socket.id);
+  }
 
-    // Remove user from waiting queue if they were waiting
-    const index = this.waitingQueue.findIndex(user => user.socket.id === socket.id);
+  private removeUserFromQueue(socketId: string): void {
+    const index = this.waitingQueue.findIndex(user => user.socket.id === socketId);
     if (index !== -1) {
       this.waitingQueue.splice(index, 1);
     }
   }
 
   private attemptMatch(): void {
-    // If there are at least 2 users in the queue, create a match
-    if (this.waitingQueue.length >= 2) {
-      const user1 = this.waitingQueue.shift(); // Get first user
-      const user2 = this.waitingQueue.shift(); // Get second user
+    // Process matches while we have enough users
+    while (this.waitingQueue.length >= 2) {
+      // 1. Get the longest waiting user (First In)
+      const user1 = this.waitingQueue.shift();
 
-      if (user1 && user2) {
+      if (!user1) break;
+
+      // Check if user1 is still connected
+      if (!user1.socket.connected) {
+        continue;
+      }
+
+      // 2. Select a random partner from the remaining queue
+      // This ensures randomness instead of predictable FIFO pairs matching
+      const randomIndex = Math.floor(Math.random() * this.waitingQueue.length);
+      const user2 = this.waitingQueue.splice(randomIndex, 1)[0];
+
+      if (user2) {
+        // Check if user2 is still connected
+        if (!user2.socket.connected) {
+          // If user2 is disconnected, we put user1 back at the HEAD of the queue (priority)
+          // protecting them from losing their spot
+          this.waitingQueue.unshift(user1);
+          continue;
+        }
+
         // Generate a unique room ID for the match
         const roomId = this.generateRoomId();
 
@@ -68,13 +85,17 @@ class MatchmakingService {
           user1: user1.socket,
           user2: user2.socket
         });
+      } else {
+        // Should not happen due to length check, but safe fallback
+        this.waitingQueue.unshift(user1);
+        break;
       }
     }
   }
 
   private generateRoomId(): string {
-    // Generate a simple unique room ID
-    return `room_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+    // Generate a secure unique room ID
+    return `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Public method to get waiting queue size (for monitoring/debugging)
