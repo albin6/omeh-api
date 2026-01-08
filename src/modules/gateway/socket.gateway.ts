@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { eventBus } from '../../core/events/event-bus';
-import { USER_CONNECTED, USER_DISCONNECTED, STOP_SEARCH } from '../../core/events/events';
+import { USER_CONNECTED, USER_DISCONNECTED, STOP_SEARCH, VIDEO_USER_CONNECTED, STOP_VIDEO_SEARCH } from '../../core/events/events';
 
 class SocketGateway {
   private io: Server;
@@ -36,6 +36,15 @@ class SocketGateway {
       socket.on('stop_search', () => {
         // Emit event to the event bus when a user stops searching
         eventBus.emit(STOP_SEARCH, { socket });
+      });
+
+      // Video Chat Events
+      socket.on('start_video_search', () => {
+        eventBus.emit(VIDEO_USER_CONNECTED, { socket });
+      });
+
+      socket.on('stop_video_search', () => {
+        eventBus.emit(STOP_VIDEO_SEARCH, { socket });
       });
     });
   }
